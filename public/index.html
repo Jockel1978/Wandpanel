@@ -24,13 +24,21 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .tile.on{border-color:var(--c,var(--on));background:color-mix(in srgb,var(--c,var(--on)) 22%,var(--card))}
 .tile .ic{font-size:1.8rem;line-height:1}
 .tile .nm{font-size:1rem}
+.tile>div:last-child{min-width:0}
+.tile.val .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .st{color:var(--mut);font-size:.85rem}
+.tile .sub{color:var(--mut);font-size:.8rem}
 .tile.on .st{color:var(--c,var(--on))}
-.tile.ro .st{font-size:1.5rem;color:var(--tx)}
-.tile.big .ic{font-size:2.8rem}.tile.big .nm{font-size:1.25rem}.tile.big .st{font-size:1rem}.tile.big.ro .st{font-size:2.4rem}
+.tile.val .st{font-size:1.5rem;color:var(--tx)}
+.tile.big .ic{font-size:2.8rem}.tile.big .nm{font-size:1.25rem}.tile.big .st{font-size:1rem}.tile.big.val .st{font-size:2.4rem}
+.stp{position:absolute;right:8px;top:8px;display:flex;gap:6px}
+.stc{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.stp button{background:#0006;color:var(--tx);border:0;border-radius:50%;width:2.3rem;height:2.3rem;font-size:1.3rem;line-height:1}
 .editing .tile{outline:2px dashed #fff8}
-.ctl{position:absolute;top:6px;right:6px;display:flex;gap:4px}
+.ctl{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:2}
 .ctl button{background:#000b;color:#fff;border:0;border-radius:8px;padding:6px 9px;font-size:1rem}
+.ctl .hd{touch-action:none;cursor:grab}
+.tile.drag{z-index:20;box-shadow:0 12px 32px #000a;opacity:.92;pointer-events:none}
 dialog{background:#1b222c;color:var(--tx);border:0;border-radius:16px;padding:20px;width:min(560px,92vw);max-height:88vh;overflow:auto}
 dialog::backdrop{background:#000a}
 dialog button,.fbtn{background:#2c3746;color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin:4px 6px 4px 0}
@@ -58,6 +66,7 @@ input[type=color]{width:56px;height:36px;border:0;background:none;padding:0}
 <dialog id="dEdit">
   <h3>Entitäten wählen</h3>
   <input type="text" id="eSearch" placeholder="Suchen…">
+  <select id="eType" style="margin-top:8px"></select>
   <div id="list"></div>
   <p><button id="eClose">Fertig</button></p>
 </dialog>
@@ -93,7 +102,16 @@ input[type=color]{width:56px;height:36px;border:0;background:none;padding:0}
 </dialog>
 
 <script>
-// ---------- Konstanten ----------
+// ---------- Typen ----------
+// k: tog = an/aus schalten, ro = nur Anzeige, act = auslösen, media = Play/Pause, clim = Heizung mit +/-
+const T={
+  light:{i:"💡",k:"tog",l:"Licht"}, switch:{i:"🔌",k:"tog",l:"Schalter"}, input_boolean:{i:"🔘",k:"tog",l:"Eingabeschalter"},
+  fan:{i:"🌀",k:"tog",l:"Ventilator"}, automation:{i:"🤖",k:"tog",l:"Automation"}, cover:{i:"🪟",k:"tog",l:"Rolladen"},
+  sensor:{i:"🌡️",k:"ro",l:"Sensor"}, binary_sensor:{i:"👁️",k:"ro",l:"Binärsensor"},
+  scene:{i:"🎬",k:"act",l:"Szene"}, script:{i:"▶️",k:"act",l:"Skript"}, button:{i:"⏺️",k:"act",l:"Taster"},
+  media_player:{i:"🎵",k:"media",l:"Medien"}, climate:{i:"♨️",k:"clim",l:"Heizung/Klima"}
+};
+const BS={door:["Offen","Zu"],window:["Offen","Zu"],opening:["Offen","Zu"],garage_door:["Offen","Zu"],motion:["Bewegung","Ruhig"],occupancy:["Belegt","Frei"],presence:["Anwesend","Abwesend"],smoke:["Alarm","OK"],gas:["Alarm","OK"],moisture:["Nass","Trocken"]};
 const DEMO = {
   "light.wohnzimmer":{name:"Wohnzimmer",state:"on",type:"light"},
   "light.kueche":{name:"Küche",state:"off",type:"light"},
@@ -102,9 +120,13 @@ const DEMO = {
   "switch.steckdose_buero":{name:"Büro Steckdose",state:"on",type:"switch"},
   "cover.wohnzimmer_rolladen":{name:"Rolladen Wohnzimmer",state:"open",type:"cover"},
   "sensor.temp_wohnzimmer":{name:"Temperatur",state:"21.4 °C",type:"sensor"},
-  "sensor.temp_aussen":{name:"Außen",state:"11.8 °C",type:"sensor"}
+  "sensor.temp_aussen":{name:"Außen",state:"11.8 °C",type:"sensor"},
+  "climate.wohnzimmer":{name:"Heizung Wohnzimmer",state:"heat",type:"climate",a:{cur:20.5,tgt:21,step:.5,min:5,max:30}},
+  "scene.abend":{name:"Abendlicht",state:"scening",type:"scene"},
+  "media_player.tv":{name:"Fernseher",state:"paused",type:"media_player",a:{title:"Tagesschau"}},
+  "binary_sensor.fenster":{name:"Fenster Bad",state:"off",type:"binary_sensor",a:{dc:"window"}},
+  "automation.nachtmodus":{name:"Nachtmodus",state:"on",type:"automation"}
 };
-const ICONS={light:"💡",switch:"🔌",cover:"🪟",sensor:"🌡️"};
 const EMOJI=["💡","🔌","🪟","🌡️","🔥","❄️","🚪","🔒","📺","🎵","☕","🌿","🛋️","🛏️","🚿","🍳","🧺","🌙","☀️","🔔"];
 const DS={bg:"#10141a",img:false,dim:.35,accent:"#f5b942",card:"#1b222c",op:.85,blur:0,minw:170,gap:14,rad:16,fs:1,clk:2.2,clock:true};
 const FIELDS=[
@@ -119,6 +141,7 @@ const SIZES=["1x1","2x1","1x2","2x2"];
 const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const $=id=>document.getElementById(id);
+const fmt=n=>n==null||isNaN(n)?"–":String(Math.round(n*10)/10).replace(".",",");
 
 // ---------- Zustand ----------
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
@@ -189,12 +212,26 @@ $("dImgX").onclick=()=>{cfg.style.img=false;bgData=null;try{localStorage.removeI
 $("dReset").onclick=()=>{if(confirm("Design auf Standard zurücksetzen? (Kacheln bleiben)")){cfg.style=clone(DS);save();applyStyle();buildDesignForm();}};
 
 // ---------- Anzeige ----------
-function stText(e){
-  if(e.type==="sensor") return e.state;
-  if(e.type==="cover") return e.state==="open"?"Offen":e.state==="closed"?"Zu":e.state;
-  return e.state==="on"?"An":e.state==="off"?"Aus":e.state;
+function isOn(e){
+  const k=T[e.type].k;
+  if(k==="tog") return e.state==="on"||e.state==="open";
+  if(k==="media") return e.state==="playing";
+  if(k==="clim") return e.state!=="off"&&e.state!=="unavailable";
+  if(e.type==="binary_sensor") return e.state==="on";
+  return false;
 }
-function isOn(e){return e.state==="on"||e.state==="open"}
+function stText(e){
+  const a=e.a||{};
+  switch(e.type){
+    case "sensor": return e.state;
+    case "cover": return e.state==="open"?"Offen":e.state==="closed"?"Zu":e.state;
+    case "binary_sensor": {const m=BS[a.dc];return e.state==="on"?(m?m[0]:"An"):e.state==="off"?(m?m[1]:"Aus"):e.state;}
+    case "climate": return fmt(a.cur)+" °C";
+    case "media_player": return e.state==="playing"?(a.title||"Wiedergabe"):e.state==="paused"?"Pause":e.state==="off"||e.state==="idle"||e.state==="standby"?"Aus":e.state;
+    case "scene": case "script": case "button": return "Tippen";
+    default: return e.state==="on"?"An":e.state==="off"?"Aus":e.state;
+  }
+}
 function move(id,dir){
   const a=[...sel()],i=a.indexOf(id),j=i+dir;
   if(i<0||j<0||j>=a.length) return;
@@ -209,19 +246,31 @@ function render(){
   g.className=editing?"editing":"";
   const ids=sel().filter(id=>ents[id]);
   ids.forEach(id=>{
-    const e=ents[id],t=tc(id),[w,h]=t.size.split("x");
+    const e=ents[id],t=tc(id),[w,h]=t.size.split("x"),k=T[e.type].k,a=e.a||{};
     const d=document.createElement("div");
-    d.className="tile"+(isOn(e)&&e.type!=="sensor"?" on":"")+(e.type==="sensor"?" ro":"")
-      +(w==="2"?" w2":"")+(h==="2"?" h2":"")+(w==="2"||h==="2"?" big":"");
+    d.dataset.id=id;
+    d.className="tile"+(isOn(e)?" on":"")+(k==="ro"?" ro":"")+(k==="ro"||k==="clim"?" val":"")
+      +(w==="2"?" w2":"")+(h==="2"?" h2 big":"");
     if(t.color) d.style.setProperty("--c",t.color);
-    d.innerHTML=`<div class="ic">${esc(t.icon||ICONS[e.type]||"•")}</div><div><div class="nm">${esc(t.label||e.name)}</div><div class="st">${esc(stText(e))}</div></div>`;
+    d.innerHTML=`<div class="ic">${esc(t.icon||T[e.type].i)}</div><div><div class="nm">${esc(t.label||e.name)}</div>${k==="clim"?`<div class="st stc"><span>${esc(stText(e))}</span><span class="sub">Soll ${esc(fmt(a.tgt))}°</span></div>`:`<div class="st">${esc(stText(e))}</div>`}</div>`;
     if(editing){
       const c=document.createElement("div");c.className="ctl";
       [["◀",()=>move(id,-1)],["▶",()=>move(id,1)],["⤢",()=>nextSize(id)],["✎",()=>openTile(id)]].forEach(([l,fn])=>{
         const b=document.createElement("button");b.textContent=l;b.onclick=ev=>{ev.stopPropagation();fn();};c.appendChild(b);
       });
+      const hd=document.createElement("button");hd.textContent="✥";hd.className="hd";hd.title="Ziehen";
+      hd.onpointerdown=ev=>startDrag(ev,d,hd);c.appendChild(hd);
       d.appendChild(c);
-    } else if(e.type!=="sensor") d.onclick=()=>toggle(id);
+    } else {
+      if(k==="clim"){
+        const s=document.createElement("div");s.className="stp";
+        [["−",-1],["+",1]].forEach(([l,dir])=>{
+          const b=document.createElement("button");b.textContent=l;b.onclick=ev=>{ev.stopPropagation();stepTemp(id,dir);};s.appendChild(b);
+        });
+        d.appendChild(s);
+      }
+      if(k!=="ro"&&k!=="clim") d.onclick=()=>{tap(id);if(k==="act"){d.classList.add("on");setTimeout(()=>d.classList.remove("on"),700);}};
+    }
     g.appendChild(d);
   });
   if(!ids.length&&(cfg.demo||conn==="Verbunden")){
@@ -230,17 +279,75 @@ function render(){
   $("badge").textContent=cfg.demo?"Demo-Modus":conn;
   $("bAdj").textContent=editing?"Fertig":"Anpassen";
 }
-function toggle(id){
-  const e=ents[id];
+function callSvc(domain,service,id,data){
+  if(!ws||ws.readyState!==1) return;
+  const m={type:"call_service",domain,service,target:{entity_id:id}};
+  if(data) m.service_data=data;
+  wsSend(m);
+}
+function tap(id){
+  const e=ents[id],k=T[e.type].k;
+  if(k==="ro"||k==="clim") return;
   if(cfg.demo){
-    if(e.type==="cover") e.state=e.state==="open"?"closed":"open";
-    else e.state=e.state==="on"?"off":"on";
-    render();
-  } else if(ws&&ws.readyState===1){
-    wsSend({type:"call_service",domain:e.type,service:"toggle",target:{entity_id:id}});
+    if(k==="tog") e.state=e.type==="cover"?(e.state==="open"?"closed":"open"):(e.state==="on"?"off":"on");
+    else if(k==="media") e.state=e.state==="playing"?"paused":"playing";
+    render();return;
   }
+  if(k==="tog") callSvc(e.type,"toggle",id);
+  else if(k==="media") callSvc("media_player","media_play_pause",id);
+  else if(e.type==="scene") callSvc("scene","turn_on",id);
+  else if(e.type==="script") callSvc("script","turn_on",id);
+  else if(e.type==="button") callSvc("button","press",id);
+}
+function stepTemp(id,dir){
+  const e=ents[id],a=e.a||(e.a={});
+  const step=a.step||.5,base=a.tgt!=null?a.tgt:a.cur;
+  if(base==null) return;
+  let n=Math.round((base+dir*step)*10)/10;
+  if(a.min!=null) n=Math.max(a.min,n);
+  if(a.max!=null) n=Math.min(a.max,n);
+  if(cfg.demo){a.tgt=n;render();}
+  else callSvc("climate","set_temperature",id,{temperature:n});
 }
 $("bAdj").onclick=()=>{editing=!editing;render();};
+
+// ---------- Ziehen zum Umsortieren ----------
+function startDrag(ev,el,handle){
+  ev.preventDefault();ev.stopPropagation();
+  const grid=$("grid"),r=el.getBoundingClientRect(),ox=ev.clientX-r.left,oy=ev.clientY-r.top;
+  el.classList.add("drag");
+  const follow=(x,y)=>{
+    el.style.transform="none";
+    const p=el.getBoundingClientRect();
+    el.style.transform=`translate(${x-ox-p.left}px,${y-oy-p.top}px)`;
+  };
+  const onMove=e=>{
+    el.style.transform="none";
+    const p=el.getBoundingClientRect();
+    const inside=e.clientX>=p.left&&e.clientX<=p.right&&e.clientY>=p.top&&e.clientY<=p.bottom;
+    if(!inside){
+      const t=document.elementFromPoint(e.clientX,e.clientY);
+      const tile=t&&t.closest&&t.closest(".tile");
+      if(tile&&tile!==el&&grid.contains(tile)){
+        const kids=[...grid.children];
+        if(kids.indexOf(el)<kids.indexOf(tile)) tile.after(el); else tile.before(el);
+      }
+    }
+    follow(e.clientX,e.clientY);
+  };
+  const end=()=>{
+    window.removeEventListener("pointermove",onMove);
+    window.removeEventListener("pointerup",end);
+    window.removeEventListener("pointercancel",end);
+    const order=[...grid.children].map(c=>c.dataset.id).filter(Boolean);
+    setSel([...order,...sel().filter(id=>!order.includes(id))]);
+    save();render();
+  };
+  // Auf window statt am Griff: Beim Umsortieren wird das Element im DOM verschoben und verliert sonst den Zeiger.
+  window.addEventListener("pointermove",onMove);
+  window.addEventListener("pointerup",end);
+  window.addEventListener("pointercancel",end);
+}
 
 // ---------- Kachel bearbeiten ----------
 let curTile=null;
@@ -279,10 +386,11 @@ function disconnect(){
 }
 function applyState(s){
   const id=s.entity_id,dom=id.split(".")[0];
-  if(!ICONS[dom]) return;
+  if(!T[dom]) return;
   const a=s.attributes||{};
   ents[id]={name:a.friendly_name||id,type:dom,
-    state:dom==="sensor"?s.state+(a.unit_of_measurement?" "+a.unit_of_measurement:""):s.state};
+    state:dom==="sensor"?s.state+(a.unit_of_measurement?" "+a.unit_of_measurement:""):s.state,
+    a:{dc:a.device_class,cur:a.current_temperature,tgt:a.temperature,step:a.target_temp_step,min:a.min_temp,max:a.max_temp,title:a.media_title}};
 }
 function connect(){
   disconnect();
@@ -313,7 +421,7 @@ function connect(){
     else if(m.type==="event"&&m.event&&m.event.event_type==="state_changed"){
       const d=m.event.data;
       if(d.new_state) applyState(d.new_state); else delete ents[d.entity_id];
-      render();
+      if(!editing) render();
     }
   };
   me.onclose=()=>{
@@ -328,9 +436,10 @@ document.addEventListener("visibilitychange",()=>{
 
 // ---------- Entitätenwahl ----------
 function renderList(){
-  const q=$("eSearch").value.trim().toLowerCase();
+  const q=$("eSearch").value.trim().toLowerCase(),ty=$("eType").value;
   const l=$("list");l.innerHTML="";
   let ids=Object.keys(ents).sort((a,b)=>a.localeCompare(b));
+  if(ty) ids=ids.filter(id=>ents[id].type===ty);
   if(q) ids=ids.filter(id=>(ents[id].name+" "+id).toLowerCase().includes(q));
   if(!ids.length){l.innerHTML='<p style="color:var(--mut)">'+(cfg.demo||conn==="Verbunden"?"Nichts gefunden.":"Noch nicht mit Home Assistant verbunden.")+'</p>';return;}
   ids.slice(0,150).forEach(id=>{
@@ -344,8 +453,13 @@ function renderList(){
   });
   if(ids.length>150){const p=document.createElement("p");p.style.color="var(--mut)";p.textContent="… "+(ids.length-150)+" weitere, bitte per Suche eingrenzen.";l.appendChild(p);}
 }
+function buildTypeFilter(){
+  const present=[...new Set(Object.values(ents).map(e=>e.type))].sort();
+  const s=$("eType");s.innerHTML='<option value="">Alle Typen</option>'+present.map(t=>`<option value="${t}">${T[t].i} ${T[t].l}</option>`).join("");
+}
 $("eSearch").oninput=renderList;
-$("bEdit").onclick=()=>{$("eSearch").value="";renderList();$("dEdit").showModal()};
+$("eType").onchange=renderList;
+$("bEdit").onclick=()=>{$("eSearch").value="";buildTypeFilter();renderList();$("dEdit").showModal()};
 $("eClose").onclick=()=>$("dEdit").close();
 
 // ---------- Einstellungen ----------
