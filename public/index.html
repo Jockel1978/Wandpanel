@@ -60,6 +60,11 @@ input[type=color]{width:56px;height:36px;border:0;background:none;padding:0}
 .f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0;color:var(--tx);font-size:1rem}
 .f span{color:var(--tx)}
 .emo button{font-size:1.4rem;padding:6px 9px;margin:2px}
+#bgGal{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 14px}
+dialog .bgb{padding:0;margin:0;border:2px solid transparent;border-radius:10px;overflow:hidden;background:#000;position:relative}
+.bgb img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+.bgb span{position:absolute;left:0;right:0;bottom:0;font-size:.7rem;padding:2px 6px;background:#000a;text-align:left;color:#fff}
+.bgb.sel{border-color:var(--on)}
 .badge{position:fixed;bottom:8px;right:12px;color:var(--mut);font-size:.8rem;text-shadow:0 1px 4px #000}
 </style>
 </head>
@@ -95,7 +100,9 @@ input[type=color]{width:56px;height:36px;border:0;background:none;padding:0}
 
 <dialog id="dDes">
   <h3>Design</h3>
-  <div class="f"><span>Hintergrundbild</span><span><button id="dImg">Bild wählen</button><button id="dImgX">Entfernen</button></span></div>
+  <label>Hintergründe</label>
+  <div id="bgGal"></div>
+  <div class="f"><span>Eigenes Bild</span><span><button id="dImg">Auswählen</button><button id="dImgX">Kein Bild</button></span></div>
   <input type="file" id="dFile" accept="image/*" style="display:none">
   <div id="dsForm"></div>
   <p><button id="dReset">Zurücksetzen</button><button id="dClose">Fertig</button></p>
@@ -139,7 +146,8 @@ const DEMO = {
   "automation.nachtmodus":{name:"Nachtmodus",state:"on",type:"automation"}
 };
 const EMOJI=["💡","🔌","🪟","🌡️","🔥","❄️","🚪","🔒","📺","🎵","☕","🌿","🛋️","🛏️","🚿","🍳","🧺","🌙","☀️","🔔"];
-const DS={bg:"#10141a",img:false,dim:.35,accent:"#f5b942",card:"#1b222c",op:.85,blur:0,minw:170,gap:14,rad:16,fs:1,clk:2.2,clock:true};
+const BGS=[["nacht","Sternennacht"],["sonnenuntergang","Sonnenuntergang"],["aurora","Aurora"],["meer","Meer"],["neon-city","Neon-Stadt"],["nebelwald","Nebelwald"],["duenen","Dünen"],["mesh","Farbverlauf"],["graphit","Graphit"]];
+const DS={bg:"#10141a",bgp:"nacht",img:false,dim:.3,accent:"#f5b942",card:"#1b222c",op:.85,blur:0,minw:170,gap:14,rad:16,fs:1,clk:2.2,clock:true};
 const FIELDS=[
   ["bg","Hintergrundfarbe","color"],["dim","Bild abdunkeln","range",0,.9,.05],
   ["accent","Akzentfarbe (an)","color"],["card","Kachelfarbe","color"],
@@ -176,9 +184,9 @@ function applyStyle(){
   r.setProperty("--card",hex2rgba(s.card,s.op));
   r.setProperty("--blur",s.blur+"px");r.setProperty("--minw",s.minw+"px");
   r.setProperty("--gap",s.gap+"px");r.setProperty("--rad",s.rad+"px");r.setProperty("--fs",s.fs);
-  const hasImg=s.img&&bgData;
-  r.setProperty("--dim",hasImg?s.dim:0);
-  $("bgimg").style.backgroundImage=hasImg?`url(${bgData})`:"none";
+  const own=s.img&&bgData,url=own?bgData:(s.bgp?`bg/${s.bgp}.jpg`:"");
+  r.setProperty("--dim",url?s.dim:0);
+  $("bgimg").style.backgroundImage=url?`url(${url})`:"none";
   $("clock").style.fontSize=s.clk+"rem";
   $("clockbox").style.visibility=s.clock?"visible":"hidden";
 }
@@ -197,6 +205,16 @@ function buildDesignForm(){
     row.appendChild(inp);f.appendChild(row);
   });
 }
+function buildGallery(){
+  const g=$("bgGal");g.innerHTML="";
+  const cur=cfg.style.img&&bgData?"":cfg.style.bgp;
+  BGS.forEach(([f,l])=>{
+    const b=document.createElement("button");b.className="bgb"+(cur===f?" sel":"");b.title=l;
+    b.innerHTML=`<img src="bg/thumb/${f}.jpg" alt=""><span>${l}</span>`;
+    b.onclick=()=>{cfg.style.bgp=f;cfg.style.img=false;save();applyStyle();buildGallery();};
+    g.appendChild(b);
+  });
+}
 function pickImage(file){
   const fr=new FileReader();
   fr.onload=()=>{
@@ -207,7 +225,7 @@ function pickImage(file){
       c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
       c.getContext("2d").drawImage(im,0,0,c.width,c.height);
       const url=c.toDataURL("image/jpeg",.82);
-      if(SV("wp_bg",url)){bgData=url;cfg.style.img=true;save();applyStyle();}
+      if(SV("wp_bg",url)){bgData=url;cfg.style.img=true;save();applyStyle();buildGallery();}
       else alert("Bild zu groß für den Speicher des Browsers. Bitte ein kleineres Bild nehmen.");
     };
     im.onerror=()=>alert("Das Bild konnte nicht gelesen werden.");
@@ -215,12 +233,12 @@ function pickImage(file){
   };
   fr.readAsDataURL(file);
 }
-$("bDes").onclick=()=>{buildDesignForm();$("dDes").showModal()};
+$("bDes").onclick=()=>{buildGallery();buildDesignForm();$("dDes").showModal()};
 $("dClose").onclick=()=>$("dDes").close();
 $("dImg").onclick=()=>$("dFile").click();
 $("dFile").onchange=e=>{if(e.target.files[0])pickImage(e.target.files[0]);e.target.value="";};
-$("dImgX").onclick=()=>{cfg.style.img=false;bgData=null;try{localStorage.removeItem("wp_bg")}catch(e){}save();applyStyle();};
-$("dReset").onclick=()=>{if(confirm("Design auf Standard zurücksetzen? (Kacheln bleiben)")){cfg.style=clone(DS);save();applyStyle();buildDesignForm();}};
+$("dImgX").onclick=()=>{cfg.style.img=false;cfg.style.bgp="";bgData=null;try{localStorage.removeItem("wp_bg")}catch(e){}save();applyStyle();buildGallery();};
+$("dReset").onclick=()=>{if(confirm("Design auf Standard zurücksetzen? (Kacheln bleiben)")){cfg.style=clone(DS);save();applyStyle();buildGallery();buildDesignForm();}};
 
 // ---------- Anzeige ----------
 function isOn(e){
