@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Wandpanel</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10141a">
+<link rel="icon" href="icon-192.png">
 <style>
 :root{--bg:#10141a;--card:#1b222c;--on:#f5b942;--tx:#e8edf3;--mut:#8493a5}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -132,6 +135,7 @@ function tick(){
   date.textContent=n.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
 }
 tick();setInterval(tick,10000);render();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
 </html>
