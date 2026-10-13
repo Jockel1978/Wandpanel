@@ -8,34 +8,49 @@
 <meta name="theme-color" content="#10141a">
 <link rel="icon" href="icon-192.png">
 <style>
-:root{--bg:#10141a;--card:#1b222c;--on:#f5b942;--tx:#e8edf3;--mut:#8493a5}
+:root{--bg:#10141a;--card:rgba(27,34,44,.85);--on:#f5b942;--tx:#e8edf3;--mut:#8493a5;--minw:170px;--gap:14px;--rad:16px;--fs:1;--dim:0;--blur:0px}
+html{font-size:calc(16px*var(--fs))}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;user-select:none}
-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;user-select:none;min-height:100vh}
+#bgimg{position:fixed;inset:0;z-index:-2;background-size:cover;background-position:center}
+#dim{position:fixed;inset:0;z-index:-1;background:#000;opacity:var(--dim);pointer-events:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;text-shadow:0 1px 6px #0008}
 #clock{font-size:2.2rem;font-weight:300}
 #date{color:var(--mut);font-size:.95rem}
-.btns button{background:var(--card);color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin-left:8px}
-#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;padding:0 20px 20px}
-.tile{background:var(--card);border-radius:16px;padding:16px;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;border:2px solid transparent}
-.tile.on{border-color:var(--on)}
-.tile .ic{font-size:1.8rem}
+.btns button{background:var(--card);color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin-left:8px;opacity:.85;backdrop-filter:blur(var(--blur))}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--minw),1fr));grid-auto-rows:calc(var(--minw)*.68);grid-auto-flow:dense;gap:var(--gap);padding:0 20px 20px}
+.tile{position:relative;background:var(--card);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border-radius:var(--rad);padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border:2px solid transparent;overflow:hidden}
+.tile.w2{grid-column:span 2}.tile.h2{grid-row:span 2}
+.tile.on{border-color:var(--c,var(--on));background:color-mix(in srgb,var(--c,var(--on)) 22%,var(--card))}
+.tile .ic{font-size:1.8rem;line-height:1}
 .tile .nm{font-size:1rem}
 .tile .st{color:var(--mut);font-size:.85rem}
-.tile.on .st{color:var(--on)}
-.tile.ro{opacity:.9}
-dialog{background:var(--card);color:var(--tx);border:0;border-radius:16px;padding:20px;width:min(560px,92vw);max-height:88vh;overflow:auto}
+.tile.on .st{color:var(--c,var(--on))}
+.tile.ro .st{font-size:1.5rem;color:var(--tx)}
+.tile.big .ic{font-size:2.8rem}.tile.big .nm{font-size:1.25rem}.tile.big .st{font-size:1rem}.tile.big.ro .st{font-size:2.4rem}
+.editing .tile{outline:2px dashed #fff8}
+.ctl{position:absolute;top:6px;right:6px;display:flex;gap:4px}
+.ctl button{background:#000b;color:#fff;border:0;border-radius:8px;padding:6px 9px;font-size:1rem}
+dialog{background:#1b222c;color:var(--tx);border:0;border-radius:16px;padding:20px;width:min(560px,92vw);max-height:88vh;overflow:auto}
 dialog::backdrop{background:#000a}
+dialog button,.fbtn{background:#2c3746;color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin:4px 6px 4px 0}
 label{display:block;margin:10px 0 4px;color:var(--mut);font-size:.85rem}
-input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;border:1px solid #2c3746;background:#10141a;color:var(--tx);font-size:1rem}
+input[type=text],input[type=password],select{width:100%;padding:10px;border-radius:8px;border:1px solid #2c3746;background:#10141a;color:var(--tx);font-size:1rem}
+input[type=range]{width:55%}
+input[type=color]{width:56px;height:36px;border:0;background:none;padding:0}
 .row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2c3746}
 .row input{width:22px;height:22px}
-.badge{position:fixed;bottom:8px;right:12px;color:var(--mut);font-size:.8rem}
+.f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0;color:var(--tx);font-size:1rem}
+.f span{color:var(--tx)}
+.emo button{font-size:1.4rem;padding:6px 9px;margin:2px}
+.badge{position:fixed;bottom:8px;right:12px;color:var(--mut);font-size:.8rem;text-shadow:0 1px 4px #000}
 </style>
 </head>
 <body>
+<div id="bgimg"></div><div id="dim"></div>
 <header>
-  <div><div id="clock">--:--</div><div id="date"></div></div>
-  <div class="btns"><button id="bEdit">Entitäten</button><button id="bSet">Einstellungen</button></div>
+  <div id="clockbox"><div id="clock">--:--</div><div id="date"></div></div>
+  <div class="btns"><button id="bEdit">Entitäten</button><button id="bDes">Design</button><button id="bAdj">Anpassen</button><button id="bSet">Einstellungen</button></div>
 </header>
 <div id="grid"></div>
 <div class="badge" id="badge"></div>
@@ -58,6 +73,25 @@ input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;
   <p style="color:var(--mut);font-size:.85rem">Adresse mit http://, https:// oder ws://, wss:// – egal, wird umgewandelt. Von einer https-Seite aus geht nur wss:// bzw. https://.</p>
 </dialog>
 
+<dialog id="dDes">
+  <h3>Design</h3>
+  <div class="f"><span>Hintergrundbild</span><span><button id="dImg">Bild wählen</button><button id="dImgX">Entfernen</button></span></div>
+  <input type="file" id="dFile" accept="image/*" style="display:none">
+  <div id="dsForm"></div>
+  <p><button id="dReset">Zurücksetzen</button><button id="dClose">Fertig</button></p>
+</dialog>
+
+<dialog id="dTile">
+  <h3 id="tTitle">Kachel</h3>
+  <label>Name</label><input type="text" id="tName">
+  <label>Symbol (Emoji)</label><input type="text" id="tIcon" placeholder="z. B. 💡">
+  <div class="emo" id="tEmo"></div>
+  <div class="f"><span>Farbe</span><span><input type="color" id="tColor"> <button id="tColorX">Standard</button></span></div>
+  <label>Größe</label>
+  <select id="tSize"><option value="1x1">Klein (1×1)</option><option value="2x1">Breit (2×1)</option><option value="1x2">Hoch (1×2)</option><option value="2x2">Groß (2×2)</option></select>
+  <p><button id="tRemove">Kachel entfernen</button><button id="tClose">Fertig</button></p>
+</dialog>
+
 <script>
 // ---------- Konstanten ----------
 const DEMO = {
@@ -71,19 +105,88 @@ const DEMO = {
   "sensor.temp_aussen":{name:"Außen",state:"11.8 °C",type:"sensor"}
 };
 const ICONS={light:"💡",switch:"🔌",cover:"🪟",sensor:"🌡️"};
+const EMOJI=["💡","🔌","🪟","🌡️","🔥","❄️","🚪","🔒","📺","🎵","☕","🌿","🛋️","🛏️","🚿","🍳","🧺","🌙","☀️","🔔"];
+const DS={bg:"#10141a",img:false,dim:.35,accent:"#f5b942",card:"#1b222c",op:.85,blur:0,minw:170,gap:14,rad:16,fs:1,clk:2.2,clock:true};
+const FIELDS=[
+  ["bg","Hintergrundfarbe","color"],["dim","Bild abdunkeln","range",0,.9,.05],
+  ["accent","Akzentfarbe (an)","color"],["card","Kachelfarbe","color"],
+  ["op","Kachel-Deckkraft","range",.15,1,.05],["blur","Glas-Weichzeichner","range",0,30,1],
+  ["minw","Kachelbreite","range",120,320,5],["gap","Abstand","range",4,30,1],
+  ["rad","Rundung","range",0,40,1],["fs","Schriftgröße","range",.8,1.6,.05],
+  ["clk","Uhrgröße","range",1,6,.1],["clock","Uhr anzeigen","check"]
+];
+const SIZES=["1x1","2x1","1x2","2x2"];
 const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $=id=>document.getElementById(id);
 
 // ---------- Zustand ----------
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
-const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
 const old=LS("wp_cfg")||{};
-let cfg=Object.assign({demo:true,url:"",token:"",selDemo:null,selLive:null},old);
+let cfg=Object.assign({demo:true,url:"",token:"",selDemo:null,selLive:null,tiles:{}},old);
+cfg.style=Object.assign({},DS,old.style||{});
 if(!cfg.selDemo) cfg.selDemo=old.sel||Object.keys(DEMO).slice(0,6);
-let ents=clone(DEMO), conn="";
+let ents=clone(DEMO), conn="", editing=false, bgData=LS("wp_bg");
 const sel=()=>cfg.demo?cfg.selDemo:(cfg.selLive||[]);
 const setSel=a=>{if(cfg.demo)cfg.selDemo=a;else cfg.selLive=a};
 const save=()=>SV("wp_cfg",cfg);
+const tc=id=>Object.assign({size:"1x1",label:"",icon:"",color:""},cfg.tiles[id]||{});
+const setTc=(id,o)=>{cfg.tiles[id]=Object.assign(tc(id),o);save();};
+
+// ---------- Design anwenden ----------
+function hex2rgba(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+function applyStyle(){
+  const s=cfg.style,r=document.documentElement.style;
+  r.setProperty("--bg",s.bg);r.setProperty("--on",s.accent);
+  r.setProperty("--card",hex2rgba(s.card,s.op));
+  r.setProperty("--blur",s.blur+"px");r.setProperty("--minw",s.minw+"px");
+  r.setProperty("--gap",s.gap+"px");r.setProperty("--rad",s.rad+"px");r.setProperty("--fs",s.fs);
+  const hasImg=s.img&&bgData;
+  r.setProperty("--dim",hasImg?s.dim:0);
+  $("bgimg").style.backgroundImage=hasImg?`url(${bgData})`:"none";
+  $("clock").style.fontSize=s.clk+"rem";
+  $("clockbox").style.visibility=s.clock?"visible":"hidden";
+}
+function buildDesignForm(){
+  const f=$("dsForm");f.innerHTML="";
+  FIELDS.forEach(([k,label,type,min,max,step])=>{
+    const row=document.createElement("div");row.className="f";
+    const lab=document.createElement("span");lab.textContent=label;row.appendChild(lab);
+    const inp=document.createElement("input");
+    if(type==="check"){inp.type="checkbox";inp.checked=!!cfg.style[k];inp.style.width="24px";inp.style.height="24px";}
+    else{inp.type=type;inp.value=cfg.style[k];if(type==="range"){inp.min=min;inp.max=max;inp.step=step;}}
+    inp.oninput=()=>{
+      cfg.style[k]=type==="check"?inp.checked:type==="range"?parseFloat(inp.value):inp.value;
+      save();applyStyle();
+    };
+    row.appendChild(inp);f.appendChild(row);
+  });
+}
+function pickImage(file){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const sc=Math.min(1,1920/Math.max(im.width,im.height));
+      const c=document.createElement("canvas");
+      c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+      c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      const url=c.toDataURL("image/jpeg",.82);
+      if(SV("wp_bg",url)){bgData=url;cfg.style.img=true;save();applyStyle();}
+      else alert("Bild zu groß für den Speicher des Browsers. Bitte ein kleineres Bild nehmen.");
+    };
+    im.onerror=()=>alert("Das Bild konnte nicht gelesen werden.");
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+$("bDes").onclick=()=>{buildDesignForm();$("dDes").showModal()};
+$("dClose").onclick=()=>$("dDes").close();
+$("dImg").onclick=()=>$("dFile").click();
+$("dFile").onchange=e=>{if(e.target.files[0])pickImage(e.target.files[0]);e.target.value="";};
+$("dImgX").onclick=()=>{cfg.style.img=false;bgData=null;try{localStorage.removeItem("wp_bg")}catch(e){}save();applyStyle();};
+$("dReset").onclick=()=>{if(confirm("Design auf Standard zurücksetzen? (Kacheln bleiben)")){cfg.style=clone(DS);save();applyStyle();buildDesignForm();}};
 
 // ---------- Anzeige ----------
 function stText(e){
@@ -92,21 +195,40 @@ function stText(e){
   return e.state==="on"?"An":e.state==="off"?"Aus":e.state;
 }
 function isOn(e){return e.state==="on"||e.state==="open"}
+function move(id,dir){
+  const a=[...sel()],i=a.indexOf(id),j=i+dir;
+  if(i<0||j<0||j>=a.length) return;
+  [a[i],a[j]]=[a[j],a[i]];setSel(a);save();render();
+}
+function nextSize(id){
+  const s=tc(id).size,n=SIZES[(SIZES.indexOf(s)+1)%SIZES.length];
+  setTc(id,{size:n});render();
+}
 function render(){
-  const g=document.getElementById("grid");g.innerHTML="";
+  const g=$("grid");g.innerHTML="";
+  g.className=editing?"editing":"";
   const ids=sel().filter(id=>ents[id]);
   ids.forEach(id=>{
-    const e=ents[id];
+    const e=ents[id],t=tc(id),[w,h]=t.size.split("x");
     const d=document.createElement("div");
-    d.className="tile"+(isOn(e)&&e.type!=="sensor"?" on":"")+(e.type==="sensor"?" ro":"");
-    d.innerHTML=`<div class="ic">${ICONS[e.type]||"•"}</div><div><div class="nm">${esc(e.name)}</div><div class="st">${esc(stText(e))}</div></div>`;
-    if(e.type!=="sensor") d.onclick=()=>toggle(id);
+    d.className="tile"+(isOn(e)&&e.type!=="sensor"?" on":"")+(e.type==="sensor"?" ro":"")
+      +(w==="2"?" w2":"")+(h==="2"?" h2":"")+(w==="2"||h==="2"?" big":"");
+    if(t.color) d.style.setProperty("--c",t.color);
+    d.innerHTML=`<div class="ic">${esc(t.icon||ICONS[e.type]||"•")}</div><div><div class="nm">${esc(t.label||e.name)}</div><div class="st">${esc(stText(e))}</div></div>`;
+    if(editing){
+      const c=document.createElement("div");c.className="ctl";
+      [["◀",()=>move(id,-1)],["▶",()=>move(id,1)],["⤢",()=>nextSize(id)],["✎",()=>openTile(id)]].forEach(([l,fn])=>{
+        const b=document.createElement("button");b.textContent=l;b.onclick=ev=>{ev.stopPropagation();fn();};c.appendChild(b);
+      });
+      d.appendChild(c);
+    } else if(e.type!=="sensor") d.onclick=()=>toggle(id);
     g.appendChild(d);
   });
   if(!ids.length&&(cfg.demo||conn==="Verbunden")){
-    g.innerHTML='<p style="color:var(--mut);padding:0 4px">Keine Kacheln gewählt. Tippe oben auf „Entitäten“.</p>';
+    g.innerHTML='<p style="color:var(--mut);padding:0 4px;grid-column:1/-1">Keine Kacheln gewählt. Tippe oben auf „Entitäten“.</p>';
   }
-  document.getElementById("badge").textContent=cfg.demo?"Demo-Modus":conn;
+  $("badge").textContent=cfg.demo?"Demo-Modus":conn;
+  $("bAdj").textContent=editing?"Fertig":"Anpassen";
 }
 function toggle(id){
   const e=ents[id];
@@ -118,6 +240,28 @@ function toggle(id){
     wsSend({type:"call_service",domain:e.type,service:"toggle",target:{entity_id:id}});
   }
 }
+$("bAdj").onclick=()=>{editing=!editing;render();};
+
+// ---------- Kachel bearbeiten ----------
+let curTile=null;
+function openTile(id){
+  curTile=id;const t=tc(id),e=ents[id]||{name:id};
+  $("tTitle").textContent=e.name;
+  $("tName").value=t.label;$("tName").placeholder=e.name;
+  $("tIcon").value=t.icon;
+  $("tColor").value=t.color||cfg.style.accent;
+  $("tSize").value=t.size;
+  const emo=$("tEmo");emo.innerHTML="";
+  EMOJI.forEach(x=>{const b=document.createElement("button");b.textContent=x;b.onclick=()=>{$("tIcon").value=x;setTc(id,{icon:x});render();};emo.appendChild(b);});
+  $("dTile").showModal();
+}
+$("tName").oninput=e=>{setTc(curTile,{label:e.target.value});render();};
+$("tIcon").oninput=e=>{setTc(curTile,{icon:e.target.value.trim()});render();};
+$("tColor").oninput=e=>{setTc(curTile,{color:e.target.value});render();};
+$("tColorX").onclick=()=>{setTc(curTile,{color:""});$("tColor").value=cfg.style.accent;render();};
+$("tSize").onchange=e=>{setTc(curTile,{size:e.target.value});render();};
+$("tRemove").onclick=()=>{setSel(sel().filter(x=>x!==curTile));save();$("dTile").close();render();};
+$("tClose").onclick=()=>$("dTile").close();
 
 // ---------- Home-Assistant-Verbindung ----------
 let ws=null,msgId=1,statesId=0,retry=null,opened=false;
@@ -184,8 +328,8 @@ document.addEventListener("visibilitychange",()=>{
 
 // ---------- Entitätenwahl ----------
 function renderList(){
-  const q=document.getElementById("eSearch").value.trim().toLowerCase();
-  const l=document.getElementById("list");l.innerHTML="";
+  const q=$("eSearch").value.trim().toLowerCase();
+  const l=$("list");l.innerHTML="";
   let ids=Object.keys(ents).sort((a,b)=>a.localeCompare(b));
   if(q) ids=ids.filter(id=>(ents[id].name+" "+id).toLowerCase().includes(q));
   if(!ids.length){l.innerHTML='<p style="color:var(--mut)">'+(cfg.demo||conn==="Verbunden"?"Nichts gefunden.":"Noch nicht mit Home Assistant verbunden.")+'</p>';return;}
@@ -200,24 +344,24 @@ function renderList(){
   });
   if(ids.length>150){const p=document.createElement("p");p.style.color="var(--mut)";p.textContent="… "+(ids.length-150)+" weitere, bitte per Suche eingrenzen.";l.appendChild(p);}
 }
-document.getElementById("eSearch").oninput=renderList;
-bEdit.onclick=()=>{document.getElementById("eSearch").value="";renderList();dEdit.showModal()};
-eClose.onclick=()=>dEdit.close();
+$("eSearch").oninput=renderList;
+$("bEdit").onclick=()=>{$("eSearch").value="";renderList();$("dEdit").showModal()};
+$("eClose").onclick=()=>$("dEdit").close();
 
 // ---------- Einstellungen ----------
-bSet.onclick=()=>{sDemo.checked=cfg.demo;sUrl.value=cfg.url;sTok.value=cfg.token;dSet.showModal()};
-sClose.onclick=()=>{
-  cfg.demo=sDemo.checked;cfg.url=sUrl.value.trim();cfg.token=sTok.value.trim();
-  save();dSet.close();connect();
+$("bSet").onclick=()=>{$("sDemo").checked=cfg.demo;$("sUrl").value=cfg.url;$("sTok").value=cfg.token;$("dSet").showModal()};
+$("sClose").onclick=()=>{
+  cfg.demo=$("sDemo").checked;cfg.url=$("sUrl").value.trim();cfg.token=$("sTok").value.trim();
+  save();$("dSet").close();connect();
 };
 
 // ---------- Uhr ----------
 function tick(){
   const n=new Date();
-  clock.textContent=n.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-  date.textContent=n.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
+  $("clock").textContent=n.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  $("date").textContent=n.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
 }
-tick();setInterval(tick,10000);connect();
+applyStyle();tick();setInterval(tick,10000);connect();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
