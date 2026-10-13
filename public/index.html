@@ -2,11 +2,136 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Wandpanel</title>
+<style>
+:root{--bg:#10141a;--card:#1b222c;--on:#f5b942;--tx:#e8edf3;--mut:#8493a5}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;user-select:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+#clock{font-size:2.2rem;font-weight:300}
+#date{color:var(--mut);font-size:.95rem}
+.btns button{background:var(--card);color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin-left:8px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;padding:0 20px 20px}
+.tile{background:var(--card);border-radius:16px;padding:16px;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;border:2px solid transparent}
+.tile.on{border-color:var(--on)}
+.tile .ic{font-size:1.8rem}
+.tile .nm{font-size:1rem}
+.tile .st{color:var(--mut);font-size:.85rem}
+.tile.on .st{color:var(--on)}
+.tile.ro{opacity:.9}
+dialog{background:var(--card);color:var(--tx);border:0;border-radius:16px;padding:20px;width:min(560px,92vw);max-height:88vh;overflow:auto}
+dialog::backdrop{background:#000a}
+label{display:block;margin:10px 0 4px;color:var(--mut);font-size:.85rem}
+input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;border:1px solid #2c3746;background:#10141a;color:var(--tx);font-size:1rem}
+.row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2c3746}
+.row input{width:22px;height:22px}
+.badge{position:fixed;bottom:8px;right:12px;color:var(--mut);font-size:.8rem}
+</style>
 </head>
 <body>
-<h1>Wandpanel</h1>
-<p>Platzhalter, kommt gleich.</p>
+<header>
+  <div><div id="clock">--:--</div><div id="date"></div></div>
+  <div class="btns"><button id="bEdit">Entitäten</button><button id="bSet">Einstellungen</button></div>
+</header>
+<div id="grid"></div>
+<div class="badge" id="badge"></div>
+
+<dialog id="dEdit">
+  <h3>Entitäten wählen</h3>
+  <div id="list"></div>
+  <p><button id="eClose">Fertig</button></p>
+</dialog>
+
+<dialog id="dSet">
+  <h3>Einstellungen</h3>
+  <div class="row"><input type="checkbox" id="sDemo"><span>Demo-Modus</span></div>
+  <label>Home-Assistant-Adresse (z. B. wss://ha.example.de)</label>
+  <input type="text" id="sUrl" placeholder="wss://...">
+  <label>Long-Lived Access Token (bleibt nur auf diesem Gerät)</label>
+  <input type="password" id="sTok">
+  <p><button id="sClose">Speichern</button></p>
+  <p style="color:var(--mut);font-size:.85rem">Echte Verbindung ist in dieser Version noch nicht eingebaut.</p>
+</dialog>
+
+<script>
+// ---------- Demo-Daten ----------
+const DEMO = {
+  "light.wohnzimmer":{name:"Wohnzimmer",state:"on",type:"light"},
+  "light.kueche":{name:"Küche",state:"off",type:"light"},
+  "light.flur":{name:"Flur",state:"off",type:"light"},
+  "switch.kaffeemaschine":{name:"Kaffeemaschine",state:"off",type:"switch"},
+  "switch.steckdose_buero":{name:"Büro Steckdose",state:"on",type:"switch"},
+  "cover.wohnzimmer_rolladen":{name:"Rolladen Wohnzimmer",state:"open",type:"cover"},
+  "sensor.temp_wohnzimmer":{name:"Temperatur",state:"21.4 °C",type:"sensor"},
+  "sensor.temp_aussen":{name:"Außen",state:"11.8 °C",type:"sensor"}
+};
+const ICONS={light:"💡",switch:"🔌",cover:"🪟",sensor:"🌡️"};
+
+// ---------- Zustand ----------
+const LS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
+const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let cfg=Object.assign({demo:true,url:"",token:"",sel:null},LS("wp_cfg")||{});
+let ents=JSON.parse(JSON.stringify(DEMO));
+if(!cfg.sel) cfg.sel=Object.keys(DEMO).slice(0,6);
+const save=()=>SV("wp_cfg",cfg);
+
+// ---------- Anzeige ----------
+function stText(e){
+  if(e.type==="sensor") return e.state;
+  if(e.type==="cover") return e.state==="open"?"Offen":"Zu";
+  return e.state==="on"?"An":"Aus";
+}
+function isOn(e){return e.state==="on"||e.state==="open"}
+function render(){
+  const g=document.getElementById("grid");g.innerHTML="";
+  cfg.sel.filter(id=>ents[id]).forEach(id=>{
+    const e=ents[id];
+    const d=document.createElement("div");
+    d.className="tile"+(isOn(e)&&e.type!=="sensor"?" on":"")+(e.type==="sensor"?" ro":"");
+    d.innerHTML=`<div class="ic">${ICONS[e.type]||"•"}</div><div><div class="nm">${e.name}</div><div class="st">${stText(e)}</div></div>`;
+    if(e.type!=="sensor") d.onclick=()=>toggle(id);
+    g.appendChild(d);
+  });
+  document.getElementById("badge").textContent=cfg.demo?"Demo-Modus":"Nicht verbunden";
+}
+function toggle(id){
+  const e=ents[id];
+  if(cfg.demo){
+    if(e.type==="cover") e.state=e.state==="open"?"closed":"open";
+    else e.state=e.state==="on"?"off":"on";
+    render();
+  }
+  // echte Steuerung kommt mit der WebSocket-Version
+}
+
+// ---------- Entitätenwahl ----------
+function renderList(){
+  const l=document.getElementById("list");l.innerHTML="";
+  Object.keys(ents).forEach(id=>{
+    const r=document.createElement("label");r.className="row";r.style.color="var(--tx)";r.style.margin=0;
+    r.innerHTML=`<input type="checkbox" ${cfg.sel.includes(id)?"checked":""}><span>${ents[id].name} <small style="color:var(--mut)">${id}</small></span>`;
+    r.querySelector("input").onchange=ev=>{
+      cfg.sel=ev.target.checked?[...cfg.sel,id]:cfg.sel.filter(x=>x!==id);
+      save();render();
+    };
+    l.appendChild(r);
+  });
+}
+bEdit.onclick=()=>{renderList();dEdit.showModal()};
+eClose.onclick=()=>dEdit.close();
+
+// ---------- Einstellungen ----------
+bSet.onclick=()=>{sDemo.checked=cfg.demo;sUrl.value=cfg.url;sTok.value=cfg.token;dSet.showModal()};
+sClose.onclick=()=>{cfg.demo=sDemo.checked;cfg.url=sUrl.value.trim();cfg.token=sTok.value.trim();save();render();dSet.close()};
+
+// ---------- Uhr ----------
+function tick(){
+  const n=new Date();
+  clock.textContent=n.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  date.textContent=n.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
+}
+tick();setInterval(tick,10000);render();
+</script>
 </body>
 </html>
