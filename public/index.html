@@ -24,13 +24,22 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .tile.on{border-color:var(--c,var(--on));background:color-mix(in srgb,var(--c,var(--on)) 22%,var(--card))}
 .tile .ic{font-size:1.8rem;line-height:1}
 .tile .nm{font-size:1rem}
-.tile>div:last-child{min-width:0}
+.tile .tx{min-width:0}
 .tile.val .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .st{color:var(--mut);font-size:.85rem}
 .tile .sub{color:var(--mut);font-size:.8rem}
 .tile.on .st{color:var(--c,var(--on))}
 .tile.val .st{font-size:1.5rem;color:var(--tx)}
 .tile.big .ic{font-size:2.8rem}.tile.big .nm{font-size:1.25rem}.tile.big .st{font-size:1rem}.tile.big.val .st{font-size:2.4rem}
+.tile.cam{padding:0;justify-content:flex-end;background:#000}
+.tile.cam>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.tile.cam .ic{display:none}
+.tile.cam .tx{position:relative;z-index:1;padding:.5rem 1rem;background:linear-gradient(transparent,#000a)}
+.tile.cam .st{color:#ddd}
+#camov{position:fixed;inset:0;z-index:100;background:#000;display:flex;align-items:center;justify-content:center}
+#camov[hidden]{display:none}
+#camov img{max-width:100%;max-height:100%;object-fit:contain}
+#camx{position:absolute;top:14px;right:14px;background:#000a;color:#fff;border:0;border-radius:50%;width:3rem;height:3rem;font-size:1.4rem}
 .stp{position:absolute;right:8px;top:8px;display:flex;gap:6px}
 .stc{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .stp button{background:#0006;color:var(--tx);border:0;border-radius:50%;width:2.3rem;height:2.3rem;font-size:1.3rem;line-height:1}
@@ -62,6 +71,8 @@ input[type=color]{width:56px;height:36px;border:0;background:none;padding:0}
 </header>
 <div id="grid"></div>
 <div class="badge" id="badge"></div>
+
+<div id="camov" hidden><button id="camx">✕</button><img id="camimg" alt=""></div>
 
 <dialog id="dEdit">
   <h3>Entitäten wählen</h3>
@@ -109,7 +120,7 @@ const T={
   fan:{i:"🌀",k:"tog",l:"Ventilator"}, automation:{i:"🤖",k:"tog",l:"Automation"}, cover:{i:"🪟",k:"tog",l:"Rolladen"},
   sensor:{i:"🌡️",k:"ro",l:"Sensor"}, binary_sensor:{i:"👁️",k:"ro",l:"Binärsensor"},
   scene:{i:"🎬",k:"act",l:"Szene"}, script:{i:"▶️",k:"act",l:"Skript"}, button:{i:"⏺️",k:"act",l:"Taster"},
-  media_player:{i:"🎵",k:"media",l:"Medien"}, climate:{i:"♨️",k:"clim",l:"Heizung/Klima"}
+  media_player:{i:"🎵",k:"media",l:"Medien"}, climate:{i:"♨️",k:"clim",l:"Heizung/Klima"}, camera:{i:"📷",k:"cam",l:"Kamera"}
 };
 const BS={door:["Offen","Zu"],window:["Offen","Zu"],opening:["Offen","Zu"],garage_door:["Offen","Zu"],motion:["Bewegung","Ruhig"],occupancy:["Belegt","Frei"],presence:["Anwesend","Abwesend"],smoke:["Alarm","OK"],gas:["Alarm","OK"],moisture:["Nass","Trocken"]};
 const DEMO = {
@@ -154,7 +165,7 @@ let ents=clone(DEMO), conn="", editing=false, bgData=LS("wp_bg");
 const sel=()=>cfg.demo?cfg.selDemo:(cfg.selLive||[]);
 const setSel=a=>{if(cfg.demo)cfg.selDemo=a;else cfg.selLive=a};
 const save=()=>SV("wp_cfg",cfg);
-const tc=id=>Object.assign({size:"1x1",label:"",icon:"",color:""},cfg.tiles[id]||{});
+const tc=id=>Object.assign({size:(ents[id]&&ents[id].type==="camera")?"2x1":"1x1",label:"",icon:"",color:""},cfg.tiles[id]||{});
 const setTc=(id,o)=>{cfg.tiles[id]=Object.assign(tc(id),o);save();};
 
 // ---------- Design anwenden ----------
@@ -229,6 +240,7 @@ function stText(e){
     case "climate": return fmt(a.cur)+" °C";
     case "media_player": return e.state==="playing"?(a.title||"Wiedergabe"):e.state==="paused"?"Pause":e.state==="off"||e.state==="idle"||e.state==="standby"?"Aus":e.state;
     case "scene": case "script": case "button": return "Tippen";
+    case "camera": return "Tippen für Live";
     default: return e.state==="on"?"An":e.state==="off"?"Aus":e.state;
   }
 }
@@ -249,10 +261,11 @@ function render(){
     const e=ents[id],t=tc(id),[w,h]=t.size.split("x"),k=T[e.type].k,a=e.a||{};
     const d=document.createElement("div");
     d.dataset.id=id;
-    d.className="tile"+(isOn(e)?" on":"")+(k==="ro"?" ro":"")+(k==="ro"||k==="clim"?" val":"")
+    d.className="tile"+(isOn(e)?" on":"")+(k==="ro"?" ro":"")+(k==="cam"?" cam":"")+(k==="ro"||k==="clim"?" val":"")
       +(w==="2"?" w2":"")+(h==="2"?" h2 big":"");
     if(t.color) d.style.setProperty("--c",t.color);
-    d.innerHTML=`<div class="ic">${esc(t.icon||T[e.type].i)}</div><div><div class="nm">${esc(t.label||e.name)}</div>${k==="clim"?`<div class="st stc"><span>${esc(stText(e))}</span><span class="sub">Soll ${esc(fmt(a.tgt))}°</span></div>`:`<div class="st">${esc(stText(e))}</div>`}</div>`;
+    d.innerHTML=`<div class="ic">${esc(t.icon||T[e.type].i)}</div><div class="tx"><div class="nm">${esc(t.label||e.name)}</div>${k==="clim"?`<div class="st stc"><span>${esc(stText(e))}</span><span class="sub">Soll ${esc(fmt(a.tgt))}°</span></div>`:`<div class="st">${esc(stText(e))}</div>`}</div>`;
+    if(k==="cam") d.insertBefore(camEl(id),d.firstChild);
     if(editing){
       const c=document.createElement("div");c.className="ctl";
       [["◀",()=>move(id,-1)],["▶",()=>move(id,1)],["⤢",()=>nextSize(id)],["✎",()=>openTile(id)]].forEach(([l,fn])=>{
@@ -287,6 +300,7 @@ function callSvc(domain,service,id,data){
 }
 function tap(id){
   const e=ents[id],k=T[e.type].k;
+  if(k==="cam"){openCam(id);return;}
   if(k==="ro"||k==="clim") return;
   if(cfg.demo){
     if(k==="tog") e.state=e.type==="cover"?(e.state==="open"?"closed":"open"):(e.state==="on"?"off":"on");
@@ -310,6 +324,34 @@ function stepTemp(id,dir){
   else callSvc("climate","set_temperature",id,{temperature:n});
 }
 $("bAdj").onclick=()=>{editing=!editing;render();};
+
+// ---------- Kameras ----------
+const camEls={};
+function haBase(){const u=wsUrl();return u?u.replace(/^ws/i,"http").replace(/\/api\/websocket$/,""):"";}
+function camUrl(id,stream){
+  const e=ents[id];if(!e||!e.a||!e.a.pic) return "";
+  let u=haBase()+e.a.pic;
+  if(stream) return u.replace("/camera_proxy/","/camera_proxy_stream/");
+  return u+(u.includes("?")?"&":"?")+"_t="+Date.now();
+}
+function camEl(id){
+  let im=camEls[id];
+  if(!im){im=camEls[id]=document.createElement("img");im.draggable=false;im.alt="";}
+  const pic=(ents[id].a&&ents[id].a.pic)||"";
+  if(im.dataset.pic!==pic){im.dataset.pic=pic;if(pic)im.src=camUrl(id);}
+  return im;
+}
+function openCam(id){
+  const u=camUrl(id,true);if(!u) return;
+  $("camimg").src=u;$("camov").hidden=false;
+}
+function closeCam(){$("camimg").removeAttribute("src");$("camov").hidden=true;}
+$("camx").onclick=closeCam;
+$("camov").onclick=e=>{if(e.target.id==="camov")closeCam();};
+setInterval(()=>{
+  if(document.hidden) return;
+  Object.keys(camEls).forEach(id=>{const u=ents[id]&&camUrl(id);if(u)camEls[id].src=u;});
+},10000);
 
 // ---------- Ziehen zum Umsortieren ----------
 function startDrag(ev,el,handle){
@@ -390,7 +432,7 @@ function applyState(s){
   const a=s.attributes||{};
   ents[id]={name:a.friendly_name||id,type:dom,
     state:dom==="sensor"?s.state+(a.unit_of_measurement?" "+a.unit_of_measurement:""):s.state,
-    a:{dc:a.device_class,cur:a.current_temperature,tgt:a.temperature,step:a.target_temp_step,min:a.min_temp,max:a.max_temp,title:a.media_title}};
+    a:{dc:a.device_class,cur:a.current_temperature,tgt:a.temperature,step:a.target_temp_step,min:a.min_temp,max:a.max_temp,title:a.media_title,pic:a.entity_picture}};
 }
 function connect(){
   disconnect();
