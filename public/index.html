@@ -42,6 +42,7 @@ input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;
 
 <dialog id="dEdit">
   <h3>Entitäten wählen</h3>
+  <input type="text" id="eSearch" placeholder="Suchen…">
   <div id="list"></div>
   <p><button id="eClose">Fertig</button></p>
 </dialog>
@@ -54,11 +55,11 @@ input[type=text],input[type=password]{width:100%;padding:10px;border-radius:8px;
   <label>Long-Lived Access Token (bleibt nur auf diesem Gerät)</label>
   <input type="password" id="sTok">
   <p><button id="sClose">Speichern</button></p>
-  <p style="color:var(--mut);font-size:.85rem">Echte Verbindung ist in dieser Version noch nicht eingebaut.</p>
+  <p style="color:var(--mut);font-size:.85rem">Adresse mit http://, https:// oder ws://, wss:// – egal, wird umgewandelt. Von einer https-Seite aus geht nur wss:// bzw. https://.</p>
 </dialog>
 
 <script>
-// ---------- Demo-Daten ----------
+// ---------- Konstanten ----------
 const DEMO = {
   "light.wohnzimmer":{name:"Wohnzimmer",state:"on",type:"light"},
   "light.kueche":{name:"Küche",state:"off",type:"light"},
@@ -70,33 +71,42 @@ const DEMO = {
   "sensor.temp_aussen":{name:"Außen",state:"11.8 °C",type:"sensor"}
 };
 const ICONS={light:"💡",switch:"🔌",cover:"🪟",sensor:"🌡️"};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 // ---------- Zustand ----------
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let cfg=Object.assign({demo:true,url:"",token:"",sel:null},LS("wp_cfg")||{});
-let ents=JSON.parse(JSON.stringify(DEMO));
-if(!cfg.sel) cfg.sel=Object.keys(DEMO).slice(0,6);
+const old=LS("wp_cfg")||{};
+let cfg=Object.assign({demo:true,url:"",token:"",selDemo:null,selLive:null},old);
+if(!cfg.selDemo) cfg.selDemo=old.sel||Object.keys(DEMO).slice(0,6);
+let ents=clone(DEMO), conn="";
+const sel=()=>cfg.demo?cfg.selDemo:(cfg.selLive||[]);
+const setSel=a=>{if(cfg.demo)cfg.selDemo=a;else cfg.selLive=a};
 const save=()=>SV("wp_cfg",cfg);
 
 // ---------- Anzeige ----------
 function stText(e){
   if(e.type==="sensor") return e.state;
-  if(e.type==="cover") return e.state==="open"?"Offen":"Zu";
-  return e.state==="on"?"An":"Aus";
+  if(e.type==="cover") return e.state==="open"?"Offen":e.state==="closed"?"Zu":e.state;
+  return e.state==="on"?"An":e.state==="off"?"Aus":e.state;
 }
 function isOn(e){return e.state==="on"||e.state==="open"}
 function render(){
   const g=document.getElementById("grid");g.innerHTML="";
-  cfg.sel.filter(id=>ents[id]).forEach(id=>{
+  const ids=sel().filter(id=>ents[id]);
+  ids.forEach(id=>{
     const e=ents[id];
     const d=document.createElement("div");
     d.className="tile"+(isOn(e)&&e.type!=="sensor"?" on":"")+(e.type==="sensor"?" ro":"");
-    d.innerHTML=`<div class="ic">${ICONS[e.type]||"•"}</div><div><div class="nm">${e.name}</div><div class="st">${stText(e)}</div></div>`;
+    d.innerHTML=`<div class="ic">${ICONS[e.type]||"•"}</div><div><div class="nm">${esc(e.name)}</div><div class="st">${esc(stText(e))}</div></div>`;
     if(e.type!=="sensor") d.onclick=()=>toggle(id);
     g.appendChild(d);
   });
-  document.getElementById("badge").textContent=cfg.demo?"Demo-Modus":"Nicht verbunden";
+  if(!ids.length&&(cfg.demo||conn==="Verbunden")){
+    g.innerHTML='<p style="color:var(--mut);padding:0 4px">Keine Kacheln gewählt. Tippe oben auf „Entitäten“.</p>';
+  }
+  document.getElementById("badge").textContent=cfg.demo?"Demo-Modus":conn;
 }
 function toggle(id){
   const e=ents[id];
@@ -104,29 +114,102 @@ function toggle(id){
     if(e.type==="cover") e.state=e.state==="open"?"closed":"open";
     else e.state=e.state==="on"?"off":"on";
     render();
+  } else if(ws&&ws.readyState===1){
+    wsSend({type:"call_service",domain:e.type,service:"toggle",target:{entity_id:id}});
   }
-  // echte Steuerung kommt mit der WebSocket-Version
 }
+
+// ---------- Home-Assistant-Verbindung ----------
+let ws=null,msgId=1,statesId=0,retry=null,opened=false;
+function wsUrl(){
+  let u=cfg.url.trim();
+  if(!u) return "";
+  if(/^https?:/i.test(u)) u=u.replace(/^http/i,"ws");
+  else if(!/^wss?:/i.test(u)) u=(location.protocol==="https:"?"wss://":"ws://")+u;
+  return u.replace(/\/+$/,"").replace(/\/api\/websocket$/,"")+"/api/websocket";
+}
+function wsSend(o){const id=msgId++;ws.send(JSON.stringify(Object.assign({id},o)));return id;}
+function disconnect(){
+  clearTimeout(retry);
+  if(ws){ws.onclose=null;ws.onmessage=null;ws.onerror=null;try{ws.close()}catch(e){}ws=null;}
+}
+function applyState(s){
+  const id=s.entity_id,dom=id.split(".")[0];
+  if(!ICONS[dom]) return;
+  const a=s.attributes||{};
+  ents[id]={name:a.friendly_name||id,type:dom,
+    state:dom==="sensor"?s.state+(a.unit_of_measurement?" "+a.unit_of_measurement:""):s.state};
+}
+function connect(){
+  disconnect();
+  if(cfg.demo){ents=clone(DEMO);conn="";render();return;}
+  ents={};
+  if(!cfg.url||!cfg.token){conn="Adresse oder Token fehlt";render();return;}
+  conn="Verbinde …";render();
+  opened=false;
+  try{ws=new WebSocket(wsUrl());}
+  catch(e){conn="Blockiert (vermutlich https-Seite → ws://). Adresse mit wss:// nötig.";render();return;}
+  const me=ws;
+  me.onmessage=ev=>{
+    let m;try{m=JSON.parse(ev.data)}catch(e){return}
+    if(m.type==="auth_required"){me.send(JSON.stringify({type:"auth",access_token:cfg.token}));}
+    else if(m.type==="auth_ok"){
+      opened=true;conn="Verbunden";
+      statesId=wsSend({type:"get_states"});
+      wsSend({type:"subscribe_events",event_type:"state_changed"});
+      render();
+    }
+    else if(m.type==="auth_invalid"){
+      disconnect();conn="Token ungültig";render();
+    }
+    else if(m.type==="result"){
+      if(m.id===statesId&&m.success){ents={};m.result.forEach(applyState);render();}
+      else if(!m.success){conn="Fehler: "+((m.error&&m.error.message)||"unbekannt");render();}
+    }
+    else if(m.type==="event"&&m.event&&m.event.event_type==="state_changed"){
+      const d=m.event.data;
+      if(d.new_state) applyState(d.new_state); else delete ents[d.entity_id];
+      render();
+    }
+  };
+  me.onclose=()=>{
+    conn=opened?"Getrennt, neuer Versuch …":"Keine Verbindung (Adresse, Port, WLAN prüfen; bei https-Seite wss:// nötig)";
+    render();
+    clearTimeout(retry);retry=setTimeout(connect,5000);
+  };
+}
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden&&!cfg.demo&&(!ws||ws.readyState>1)) connect();
+});
 
 // ---------- Entitätenwahl ----------
 function renderList(){
+  const q=document.getElementById("eSearch").value.trim().toLowerCase();
   const l=document.getElementById("list");l.innerHTML="";
-  Object.keys(ents).forEach(id=>{
+  let ids=Object.keys(ents).sort((a,b)=>a.localeCompare(b));
+  if(q) ids=ids.filter(id=>(ents[id].name+" "+id).toLowerCase().includes(q));
+  if(!ids.length){l.innerHTML='<p style="color:var(--mut)">'+(cfg.demo||conn==="Verbunden"?"Nichts gefunden.":"Noch nicht mit Home Assistant verbunden.")+'</p>';return;}
+  ids.slice(0,150).forEach(id=>{
     const r=document.createElement("label");r.className="row";r.style.color="var(--tx)";r.style.margin=0;
-    r.innerHTML=`<input type="checkbox" ${cfg.sel.includes(id)?"checked":""}><span>${ents[id].name} <small style="color:var(--mut)">${id}</small></span>`;
+    r.innerHTML=`<input type="checkbox" ${sel().includes(id)?"checked":""}><span>${esc(ents[id].name)} <small style="color:var(--mut)">${esc(id)}</small></span>`;
     r.querySelector("input").onchange=ev=>{
-      cfg.sel=ev.target.checked?[...cfg.sel,id]:cfg.sel.filter(x=>x!==id);
+      setSel(ev.target.checked?[...sel(),id]:sel().filter(x=>x!==id));
       save();render();
     };
     l.appendChild(r);
   });
+  if(ids.length>150){const p=document.createElement("p");p.style.color="var(--mut)";p.textContent="… "+(ids.length-150)+" weitere, bitte per Suche eingrenzen.";l.appendChild(p);}
 }
-bEdit.onclick=()=>{renderList();dEdit.showModal()};
+document.getElementById("eSearch").oninput=renderList;
+bEdit.onclick=()=>{document.getElementById("eSearch").value="";renderList();dEdit.showModal()};
 eClose.onclick=()=>dEdit.close();
 
 // ---------- Einstellungen ----------
 bSet.onclick=()=>{sDemo.checked=cfg.demo;sUrl.value=cfg.url;sTok.value=cfg.token;dSet.showModal()};
-sClose.onclick=()=>{cfg.demo=sDemo.checked;cfg.url=sUrl.value.trim();cfg.token=sTok.value.trim();save();render();dSet.close()};
+sClose.onclick=()=>{
+  cfg.demo=sDemo.checked;cfg.url=sUrl.value.trim();cfg.token=sTok.value.trim();
+  save();dSet.close();connect();
+};
 
 // ---------- Uhr ----------
 function tick(){
@@ -134,7 +217,7 @@ function tick(){
   clock.textContent=n.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
   date.textContent=n.toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"});
 }
-tick();setInterval(tick,10000);render();
+tick();setInterval(tick,10000);connect();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
