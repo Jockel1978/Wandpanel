@@ -19,35 +19,43 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 #date{color:var(--mut);font-size:.95rem}
 .btns button{background:var(--card);color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin-left:8px;opacity:.85;backdrop-filter:blur(var(--blur))}
 #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--minw),1fr));grid-auto-rows:calc(var(--minw)*.68);grid-auto-flow:dense;gap:var(--gap);padding:0 20px 20px}
-.tile{position:relative;background:var(--card);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border-radius:var(--rad);padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border:2px solid transparent;overflow:hidden}
+.tile{position:relative;background:var(--card);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));border-radius:var(--rad);border:2px solid transparent;overflow:hidden;container-type:size}
+.tile>.ti{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:1rem;padding:clamp(8px,14cqmin,24px)}
 .tile.w2{grid-column:span 2}.tile.h2{grid-row:span 2}
 .tile.on{border-color:var(--c,var(--on));background:color-mix(in srgb,var(--c,var(--on)) 22%,var(--card))}
-.tile .ic{font-size:1.8rem;line-height:1}
-.tile .nm{font-size:1rem}
+/* Inhalt skaliert mit der Kachel (cqmin = kleinere Kachelseite). Die erste font-size je Regel ist der Fallback für alte Browser. */
+.tile .ic{font-size:1.8rem;font-size:calc(var(--fs)*clamp(22px,26cqmin,120px));line-height:1}
+.tile .nm{font-size:1rem;font-size:calc(var(--fs)*clamp(13px,14cqmin,40px));hyphens:auto;overflow-wrap:break-word}
 .tile .tx{min-width:0}
 .tile.val .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tile .st{color:var(--mut);font-size:.85rem}
-.tile .sub{color:var(--mut);font-size:.8rem}
+.tile .st{color:var(--mut);font-size:.85rem;font-size:calc(var(--fs)*clamp(11px,12cqmin,32px))}
+.tile .sub{color:var(--mut);font-size:.8rem;font-size:calc(var(--fs)*clamp(10px,10cqmin,26px))}
 .tile.on .st{color:var(--c,var(--on))}
-.tile.val .st{font-size:1.5rem;color:var(--tx)}
-.tile.big .ic{font-size:2.8rem}.tile.big .nm{font-size:1.25rem}.tile.big .st{font-size:1rem}.tile.big.val .st{font-size:2.4rem}
-.tile.cam{padding:0;justify-content:flex-end;background:#000}
+.tile.val .st{color:var(--tx);line-height:1.1;overflow-wrap:anywhere;font-size:1.5rem;font-size:max(11px,min(calc(var(--fs)*clamp(18px,21cqmin,84px)),calc((100cqw - 28cqmin)/(var(--len,6)*.55))))}
+.tile.cam{background:#000}
 .tile.cam>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 .tile.cam .ic{display:none}
-.tile.cam .tx{position:relative;z-index:1;padding:.5rem 1rem;background:linear-gradient(transparent,#000a)}
+.tile.cam>.ti{padding:0;justify-content:flex-end}
+.tile.cam .tx{position:relative;z-index:1;padding:.5rem 1rem;padding:clamp(6px,7cqmin,16px) clamp(10px,10cqmin,22px);background:linear-gradient(transparent,#000a)}
 .tile.cam .st{color:#ddd}
 #camov{position:fixed;inset:0;z-index:100;background:#000;display:flex;align-items:center;justify-content:center}
 #camov[hidden]{display:none}
 #camov img{max-width:100%;max-height:100%;object-fit:contain}
 #camx{position:absolute;top:14px;right:14px;background:#000a;color:#fff;border:0;border-radius:50%;width:3rem;height:3rem;font-size:1.4rem}
-.stp{position:absolute;right:8px;top:8px;display:flex;gap:6px}
+.stp{position:absolute;right:8px;top:8px;display:flex;gap:6px;right:clamp(6px,8cqmin,14px);top:clamp(6px,8cqmin,14px);gap:clamp(4px,5cqmin,10px)}
 .stc{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.stp button{background:#0006;color:var(--tx);border:0;border-radius:50%;width:2.3rem;height:2.3rem;font-size:1.3rem;line-height:1}
+.stp button{background:#0006;color:var(--tx);border:0;border-radius:50%;width:2.3rem;height:2.3rem;font-size:1.3rem;width:clamp(30px,22cqmin,68px);height:clamp(30px,22cqmin,68px);font-size:clamp(18px,14cqmin,36px);line-height:1}
 .editing .tile{outline:2px dashed #fff8}
 .ctl{position:absolute;top:6px;right:6px;display:flex;gap:4px;z-index:2}
 .ctl button{background:#000b;color:#fff;border:0;border-radius:8px;padding:6px 9px;font-size:1rem}
 .ctl .hd{touch-action:none;cursor:grab}
 .tile.drag{z-index:20;box-shadow:0 12px 32px #000a;opacity:.92;pointer-events:none}
+[hidden]{display:none!important}
+#grid.free{display:block;position:relative;padding:0;margin:0 20px 20px}
+body.free{overflow:hidden}
+.free .tile{position:absolute}
+.free.editing .tile{touch-action:none;cursor:move}
+.rz{position:absolute;right:0;bottom:0;width:44px;height:44px;z-index:3;touch-action:none;cursor:nwse-resize;border-bottom-right-radius:var(--rad);background:linear-gradient(135deg,transparent 50%,#fffe 50%,#fffe 58%,transparent 58%,transparent 68%,#fffe 68%,#fffe 76%,transparent 76%)}
 dialog{background:#1b222c;color:var(--tx);border:0;border-radius:16px;padding:20px;width:min(560px,92vw);max-height:88vh;overflow:auto}
 dialog::backdrop{background:#000a}
 dialog button,.fbtn{background:#2c3746;color:var(--tx);border:0;border-radius:10px;padding:10px 14px;font-size:1rem;margin:4px 6px 4px 0}
@@ -100,6 +108,8 @@ dialog .bgb{padding:0;margin:0;border:2px solid transparent;border-radius:10px;o
 
 <dialog id="dDes">
   <h3>Design</h3>
+  <div class="f"><span>Layout</span><select id="dLayout" style="width:auto"><option value="grid">Raster</option><option value="free">Frei (Kacheln beliebig verschieben und skalieren)</option></select></div>
+  <div class="f" id="dFreeRow" hidden><span>Frei-Anordnung</span><button id="dFreeReset">Neu anordnen</button></div>
   <label>Hintergründe</label>
   <div id="bgGal"></div>
   <div class="f"><span>Eigenes Bild</span><span><button id="dImg">Auswählen</button><button id="dImgX">Kein Bild</button></span></div>
@@ -114,8 +124,9 @@ dialog .bgb{padding:0;margin:0;border:2px solid transparent;border-radius:10px;o
   <label>Symbol (Emoji)</label><input type="text" id="tIcon" placeholder="z. B. 💡">
   <div class="emo" id="tEmo"></div>
   <div class="f"><span>Farbe</span><span><input type="color" id="tColor"> <button id="tColorX">Standard</button></span></div>
-  <label>Größe</label>
-  <select id="tSize"><option value="1x1">Klein (1×1)</option><option value="2x1">Breit (2×1)</option><option value="1x2">Hoch (1×2)</option><option value="2x2">Groß (2×2)</option></select>
+  <div id="tSizeBox"><label>Größe</label>
+  <select id="tSize"><option value="1x1">Klein (1×1)</option><option value="2x1">Breit (2×1)</option><option value="1x2">Hoch (1×2)</option><option value="2x2">Groß (2×2)</option></select></div>
+  <p id="tFreeHint" hidden style="color:var(--mut);font-size:.85rem">Größe ändern: im Modus „Anpassen“ die Ecke unten rechts an der Kachel ziehen.</p>
   <p><button id="tRemove">Kachel entfernen</button><button id="tClose">Fertig</button></p>
 </dialog>
 
@@ -147,14 +158,14 @@ const DEMO = {
 };
 const EMOJI=["💡","🔌","🪟","🌡️","🔥","❄️","🚪","🔒","📺","🎵","☕","🌿","🛋️","🛏️","🚿","🍳","🧺","🌙","☀️","🔔"];
 const BGS=[["nacht","Sternennacht"],["sonnenuntergang","Sonnenuntergang"],["aurora","Aurora"],["meer","Meer"],["neon-city","Neon-Stadt"],["nebelwald","Nebelwald"],["duenen","Dünen"],["mesh","Farbverlauf"],["graphit","Graphit"]];
-const DS={bg:"#10141a",bgp:"nacht",img:false,dim:.3,accent:"#f5b942",card:"#1b222c",op:.85,blur:0,minw:170,gap:14,rad:16,fs:1,clk:2.2,clock:true};
+const DS={bg:"#10141a",bgp:"nacht",img:false,dim:.3,accent:"#f5b942",card:"#1b222c",op:.85,blur:0,minw:170,gap:14,rad:16,fs:1,clk:2.2,clock:true,snap:true};
 const FIELDS=[
   ["bg","Hintergrundfarbe","color"],["dim","Bild abdunkeln","range",0,.9,.05],
   ["accent","Akzentfarbe (an)","color"],["card","Kachelfarbe","color"],
   ["op","Kachel-Deckkraft","range",.15,1,.05],["blur","Glas-Weichzeichner","range",0,30,1],
   ["minw","Kachelbreite","range",120,320,5],["gap","Abstand","range",4,30,1],
   ["rad","Rundung","range",0,40,1],["fs","Schriftgröße","range",.8,1.6,.05],
-  ["clk","Uhrgröße","range",1,6,.1],["clock","Uhr anzeigen","check"]
+  ["clk","Uhrgröße","range",1,6,.1],["clock","Uhr anzeigen","check"],["snap","Beim Verschieben an Nachbarn einrasten (Frei-Layout)","check"]
 ];
 const SIZES=["1x1","2x1","1x2","2x2"];
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -166,7 +177,7 @@ const fmt=n=>n==null||isNaN(n)?"–":String(Math.round(n*10)/10).replace(".",","
 const LS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 const SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
 const old=LS("wp_cfg")||{};
-let cfg=Object.assign({demo:true,url:"",token:"",selDemo:null,selLive:null,tiles:{}},old);
+let cfg=Object.assign({demo:true,url:"",token:"",selDemo:null,selLive:null,tiles:{},layout:"grid"},old);
 cfg.style=Object.assign({},DS,old.style||{});
 if(!cfg.selDemo) cfg.selDemo=old.sel||Object.keys(DEMO).slice(0,6);
 let ents=clone(DEMO), conn="", editing=false, bgData=LS("wp_bg");
@@ -189,6 +200,7 @@ function applyStyle(){
   $("bgimg").style.backgroundImage=url?`url(${url})`:"none";
   $("clock").style.fontSize=s.clk+"rem";
   $("clockbox").style.visibility=s.clock?"visible":"hidden";
+  fitCanvas();
 }
 function buildDesignForm(){
   const f=$("dsForm");f.innerHTML="";
@@ -233,7 +245,9 @@ function pickImage(file){
   };
   fr.readAsDataURL(file);
 }
-$("bDes").onclick=()=>{buildGallery();buildDesignForm();$("dDes").showModal()};
+$("bDes").onclick=()=>{buildGallery();buildDesignForm();$("dLayout").value=cfg.layout;$("dFreeRow").hidden=cfg.layout!=="free";$("dDes").showModal()};
+$("dLayout").onchange=e=>setLayout(e.target.value);
+$("dFreeReset").onclick=()=>{Object.keys(cfg.tiles).forEach(id=>{delete cfg.tiles[id].f;});save();render();};
 $("dClose").onclick=()=>$("dDes").close();
 $("dImg").onclick=()=>$("dFile").click();
 $("dFile").onchange=e=>{if(e.target.files[0])pickImage(e.target.files[0]);e.target.value="";};
@@ -272,25 +286,37 @@ function nextSize(id){
   setTc(id,{size:n});render();
 }
 function render(){
-  const g=$("grid");g.innerHTML="";
-  g.className=editing?"editing":"";
+  const g=$("grid"),free=cfg.layout==="free";
+  g.innerHTML="";
+  g.className=(editing?"editing ":"")+(free?"free":"");
+  document.body.classList.toggle("free",free);
+  fitCanvas();
   const ids=sel().filter(id=>ents[id]);
+  if(free) ensureFree(ids);
   ids.forEach(id=>{
-    const e=ents[id],t=tc(id),[w,h]=t.size.split("x"),k=T[e.type].k,a=e.a||{};
+    const e=ents[id],t=tc(id),[w,h]=t.size.split("x"),k=T[e.type].k,a=e.a||{},st=stText(e);
     const d=document.createElement("div");
     d.dataset.id=id;
     d.className="tile"+(isOn(e)?" on":"")+(k==="ro"?" ro":"")+(k==="cam"?" cam":"")+(k==="ro"||k==="clim"?" val":"")
-      +(w==="2"?" w2":"")+(h==="2"?" h2 big":"");
+      +(free?"":(w==="2"?" w2":"")+(h==="2"?" h2":""));
+    if(free&&t.f){const f=t.f;d.style.left=f.x*100+"%";d.style.top=f.y*100+"%";d.style.width=f.w*100+"%";d.style.height=f.h*100+"%";if(t.z)d.style.zIndex=t.z;}
     if(t.color) d.style.setProperty("--c",t.color);
-    d.innerHTML=`<div class="ic">${esc(t.icon||T[e.type].i)}</div><div class="tx"><div class="nm">${esc(t.label||e.name)}</div>${k==="clim"?`<div class="st stc"><span>${esc(stText(e))}</span><span class="sub">Soll ${esc(fmt(a.tgt))}°</span></div>`:`<div class="st">${esc(stText(e))}</div>`}</div>`;
+    if(k==="ro") d.style.setProperty("--len",Math.max(3,[...String(st)].length));
+    d.innerHTML=`<div class="ti"><div class="ic">${esc(t.icon||T[e.type].i)}</div><div class="tx"><div class="nm">${esc(t.label||e.name)}</div>${k==="clim"?`<div class="st stc"><span>${esc(st)}</span><span class="sub">Soll ${esc(fmt(a.tgt))}°</span></div>`:`<div class="st">${esc(st)}</div>`}</div></div>`;
     if(k==="cam") d.insertBefore(camEl(id),d.firstChild);
     if(editing){
       const c=document.createElement("div");c.className="ctl";
-      [["◀",()=>move(id,-1)],["▶",()=>move(id,1)],["⤢",()=>nextSize(id)],["✎",()=>openTile(id)]].forEach(([l,fn])=>{
+      const btns=free?[["✎",()=>openTile(id)]]:[["◀",()=>move(id,-1)],["▶",()=>move(id,1)],["⤢",()=>nextSize(id)],["✎",()=>openTile(id)]];
+      btns.forEach(([l,fn])=>{
         const b=document.createElement("button");b.textContent=l;b.onclick=ev=>{ev.stopPropagation();fn();};c.appendChild(b);
       });
-      const hd=document.createElement("button");hd.textContent="✥";hd.className="hd";hd.title="Ziehen";
-      hd.onpointerdown=ev=>startDrag(ev,d,hd);c.appendChild(hd);
+      if(free){
+        d.onpointerdown=ev=>startFree(ev,d,id,"move");
+        const rz=document.createElement("div");rz.className="rz";rz.onpointerdown=ev=>startFree(ev,d,id,"size");d.appendChild(rz);
+      } else {
+        const hd=document.createElement("button");hd.textContent="✥";hd.className="hd";hd.title="Ziehen";
+        hd.onpointerdown=ev=>startDrag(ev,d,hd);c.appendChild(hd);
+      }
       d.appendChild(c);
     } else {
       if(k==="clim"){
@@ -409,6 +435,107 @@ function startDrag(ev,el,handle){
   window.addEventListener("pointercancel",end);
 }
 
+// ---------- Freies Layout ----------
+// Positionen/Größen als Anteile (0..1) der Fläche unter der Kopfzeile, damit sie auf jedem Bildschirm mitwachsen.
+const rnd=o=>{const r={};for(const k in o)r[k]=Math.round(o[k]*1e4)/1e4;return r;};
+function fitCanvas(){
+  const g=$("grid");
+  if(cfg.layout!=="free"){g.style.height="";return;}
+  const top=g.getBoundingClientRect().top+window.scrollY;
+  g.style.height=Math.max(200,window.innerHeight-top-20)+"px";
+}
+window.addEventListener("resize",()=>{if(cfg.layout==="free")fitCanvas();});
+function ensureFree(ids){
+  const g=$("grid"),cw=g.clientWidth,ch=g.clientHeight;
+  if(!cw||!ch) return;
+  const placed=ids.map(id=>tc(id).f).filter(Boolean);
+  const gap=cfg.style.gap,mw=cfg.style.minw,gx=gap/cw,gy=gap/ch;
+  let changed=false;
+  ids.forEach(id=>{
+    if(tc(id).f) return;
+    const [sw,sh]=tc(id).size.split("x").map(Number);
+    const w=Math.min(1,(mw*sw+gap*(sw-1))/cw),h=Math.min(1,(mw*.68*sh+gap*(sh-1))/ch);
+    let sp=null;
+    for(let y=0;y<=1-h+1e-6&&!sp;y+=.01)for(let x=0;x<=1-w+1e-6;x+=.01){
+      if(!placed.some(p=>x<p.x+p.w+gx-1e-6&&x+w+gx>p.x+1e-6&&y<p.y+p.h+gy-1e-6&&y+h+gy>p.y+1e-6)){sp={x,y};break;}
+    }
+    if(!sp){const n=placed.length%8;sp={x:Math.min(1-w,.03*n),y:Math.min(1-h,.03*n)};}
+    const nf=rnd({x:sp.x,y:sp.y,w,h});placed.push(nf);
+    cfg.tiles[id]=Object.assign(cfg.tiles[id]||{},{f:nf});changed=true;
+  });
+  if(changed) save();
+}
+// Beim Wechsel Raster → Frei bleibt die Anordnung so, wie sie gerade aussieht.
+function gridToFree(){
+  const g=$("grid"),els=[...g.children].filter(c=>c.dataset&&c.dataset.id);
+  if(!els.length) return;
+  const gr=g.getBoundingClientRect(),cs=getComputedStyle(g),padL=parseFloat(cs.paddingLeft)||0,padR=parseFloat(cs.paddingRight)||0;
+  const cw=g.clientWidth-padL-padR;
+  const Hv=Math.max(200,window.innerHeight-(gr.top+window.scrollY)-20);
+  let Hc=0;els.forEach(el=>{Hc=Math.max(Hc,el.getBoundingClientRect().bottom-gr.top);});
+  const sy=Hc>Hv?Hv/Hc:1;
+  els.forEach(el=>{
+    const id=el.dataset.id;
+    if(cfg.tiles[id]&&cfg.tiles[id].f) return;
+    const r=el.getBoundingClientRect();
+    cfg.tiles[id]=Object.assign(cfg.tiles[id]||{},{f:rnd({x:(r.left-gr.left-padL)/cw,y:(r.top-gr.top)*sy/Hv,w:r.width/cw,h:r.height*sy/Hv})});
+  });
+}
+const normZ=()=>{Object.keys(cfg.tiles).filter(i=>cfg.tiles[i].z).sort((a,b)=>cfg.tiles[a].z-cfg.tiles[b].z).forEach((i,n)=>{cfg.tiles[i].z=n+1;});};
+const topZ=()=>1+Math.max(0,...Object.values(cfg.tiles).map(t=>t.z||0));
+const SNAP_PX=8;
+function snapD(vals,targets){
+  let best=0,bd=SNAP_PX+1;
+  vals.forEach(v=>targets.forEach(t=>{const d=t-v;if(Math.abs(d)<bd){bd=Math.abs(d);best=d;}}));
+  return bd<=SNAP_PX?best:0;
+}
+const pick=(a,b)=>a&&(!b||Math.abs(a)<=Math.abs(b))?a:b;
+function startFree(ev,el,id,mode){
+  if(ev.button>0) return;
+  if(mode==="move"&&ev.target.closest&&ev.target.closest(".ctl,.rz")) return;
+  ev.preventDefault();ev.stopPropagation();
+  const g=$("grid"),cw=g.clientWidth,ch=g.clientHeight,gap=cfg.style.gap,snapOn=cfg.style.snap;
+  const f=tc(id).f;if(!f||!cw||!ch) return;
+  const S={x:f.x*cw,y:f.y*ch,w:f.w*cw,h:f.h*ch},x0=ev.clientX,y0=ev.clientY;
+  const O=[...g.children].filter(c=>c!==el&&c.dataset&&c.dataset.id&&tc(c.dataset.id).f).map(c=>{const q=tc(c.dataset.id).f;return{l:q.x*cw,t:q.y*ch,r:(q.x+q.w)*cw,b:(q.y+q.h)*ch};});
+  const xl=[0,...O.flatMap(o=>[o.l,o.r,o.r+gap])],xr=[cw,...O.flatMap(o=>[o.l,o.r,o.l-gap])];
+  const yt=[0,...O.flatMap(o=>[o.t,o.b,o.b+gap])],yb=[ch,...O.flatMap(o=>[o.t,o.b,o.t-gap])];
+  const minW=Math.min(cw,90),minH=Math.min(ch,70),R={x:S.x,y:S.y,w:S.w,h:S.h};
+  const z=topZ();el.style.zIndex=z;
+  el.classList.add("drag");
+  const put=()=>{el.style.left=R.x/cw*100+"%";el.style.top=R.y/ch*100+"%";el.style.width=R.w/cw*100+"%";el.style.height=R.h/ch*100+"%";};
+  const onMove=e=>{
+    const dx=e.clientX-x0,dy=e.clientY-y0;
+    if(mode==="move"){
+      let x=S.x+dx,y=S.y+dy;
+      if(snapOn){x+=pick(snapD([x],xl),snapD([x+R.w],xr));y+=pick(snapD([y],yt),snapD([y+R.h],yb));}
+      R.x=Math.max(0,Math.min(cw-R.w,x));R.y=Math.max(0,Math.min(ch-R.h,y));
+    } else {
+      let w=Math.max(minW,S.w+dx),h=Math.max(minH,S.h+dy);
+      if(snapOn){w+=snapD([R.x+w],xr);h+=snapD([R.y+h],yb);}
+      R.w=Math.max(minW,Math.min(cw-R.x,w));R.h=Math.max(minH,Math.min(ch-R.y,h));
+    }
+    put();
+  };
+  const end=()=>{
+    window.removeEventListener("pointermove",onMove);
+    window.removeEventListener("pointerup",end);
+    window.removeEventListener("pointercancel",end);
+    el.classList.remove("drag");
+    setTc(id,{f:rnd({x:R.x/cw,y:R.y/ch,w:R.w/cw,h:R.h/ch}),z});normZ();save();
+  };
+  window.addEventListener("pointermove",onMove);
+  window.addEventListener("pointerup",end);
+  window.addEventListener("pointercancel",end);
+}
+function setLayout(v){
+  if(v===cfg.layout) return;
+  if(v==="free") gridToFree();
+  cfg.layout=v;save();
+  $("dFreeRow").hidden=v!=="free";
+  render();
+}
+
 // ---------- Kachel bearbeiten ----------
 let curTile=null;
 function openTile(id){
@@ -420,6 +547,7 @@ function openTile(id){
   $("tSize").value=t.size;
   const emo=$("tEmo");emo.innerHTML="";
   EMOJI.forEach(x=>{const b=document.createElement("button");b.textContent=x;b.onclick=()=>{$("tIcon").value=x;setTc(id,{icon:x});render();};emo.appendChild(b);});
+  const free=cfg.layout==="free";$("tSizeBox").hidden=free;$("tFreeHint").hidden=!free;
   $("dTile").showModal();
 }
 $("tName").oninput=e=>{setTc(curTile,{label:e.target.value});render();};
